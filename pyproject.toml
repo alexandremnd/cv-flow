@@ -1,0 +1,27 @@
+[project]
+name = "cvflow"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Alexandre Menard", email = "alexxandre.mnd+dev@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "networkx>=3.6.1",
+    "numpy>=2.4.4",
+    "scipy>=1.17.1",
+]
+
+[project.scripts]
+cvflow = "cvflow:main"
+
+[build-system]
+requires = ["uv_build>=0.10.12,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
