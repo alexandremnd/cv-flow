@@ -1,9 +1,12 @@
-from typing import Iterable
-
 import numpy as np
 from .graph import OpenGraph
 
-def check_flow(graph: OpenGraph, measurements: Iterable[int]) -> tuple[bool, list[np.ndarray]]:
+# TODO: The current implementation of check_flow and find_cvflow
+# uses least squares and thus minimises the L2 norm of the correction vector
+# which spread the correction onto many nodes instead of concentrating it on a few nodes.
+# A better solution would be to use a L1 minimisation from scipy.optimize.linprog (or even offer a choice of the norm L1/L2)
+
+def check_flow(graph: OpenGraph, measurements: list[int]) -> tuple[bool, list[np.ndarray]]:
     """Check if an OpenGraph satisfies the flow property for a given sequence of measurements.
 
     Args:
@@ -15,13 +18,18 @@ def check_flow(graph: OpenGraph, measurements: Iterable[int]) -> tuple[bool, lis
             measurements[0] is the first node to be measured, measurements[1] the second, and so on.
 
     Returns:
-        bool: True if the measurement sequence satisfies the flow property, False otherwise.
+        bool:
+            True if the measurement sequence satisfies the flow property, False otherwise.
+
+        list[np.ndarray]:
+            A list of correction vectors corresponding to each measurement in the sequence.
+            Each vector indicates the required corrections to achieve the CV-flow for that measurement.
     """
     if not all(node in graph.nodes for node in measurements):
         raise ValueError("Each node measured must be present in the graph.")
 
     past_nodes = []
-    corrections = []
+    corrections = [np.zeros(graph.number_of_nodes) for _ in measurements]
 
     for node in measurements:
         past_nodes.append(node)
@@ -38,8 +46,8 @@ def check_flow(graph: OpenGraph, measurements: Iterable[int]) -> tuple[bool, lis
         if rank_augmented != rank_correction:
             return False, []
 
-        corrections.append(c)
-
+        for fnode in future_nodes:
+            corrections[measurements.index(node)][fnode] = c[future_nodes.index(fnode)]
 
     return True, corrections
 
