@@ -7,12 +7,16 @@ from matplotlib.lines import Line2D
 
 class OpenGraph:
     def __init__(self, graph: nx.Graph, input_nodes: Iterable[int], output_nodes: Iterable[int]):
-        """Initializes an OpenGraph with the given graph, input nodes, and output nodes.
+        """Initializes an OpenGraph around a given NetworkX graph, input nodes, and output nodes.
 
-        Args:
-            graph (nx.Graph): The graph to initialize with.
-            input_nodes (Iterable[int]): The input nodes.
-            output_nodes (Iterable[int]): The output nodes.
+        Parameters
+        ----------
+        graph : nx.Graph
+            The underlying NetworkX graph.
+        input_nodes : Iterable[int]
+            The input nodes.
+        output_nodes : Iterable[int]
+            The output nodes.
         """
 
         self.graph: nx.Graph                = graph
@@ -24,7 +28,17 @@ class OpenGraph:
         self.__validate__()
 
     def __validate__(self):
-        """Validates the graph structure, ensuring that input and output nodes are correctly defined."""
+        """Validate the graph structure.
+
+        Ensures that input and output nodes are present in the graph and that
+        node indices start from 0.
+
+        Raises
+        ------
+        ValueError
+            If any input or output node is not in the graph, or if the minimum
+            node index is not 0.
+        """
         if not all(node in self._nodes for node in self._input_nodes):
             raise ValueError("All input nodes must be present in the graph.")
 
@@ -36,91 +50,130 @@ class OpenGraph:
 
     @property
     def number_of_nodes(self) -> int:
-        """Returns the number of nodes in the graph.
+        """Total number of nodes in the graph.
 
-        Returns:
-            int: The number of nodes in the graph.
+        Returns
+        -------
+        number_of_nodes : int
+            The number of nodes in the graph.
         """
         return len(self._nodes)
 
     @property
     def number_of_input_nodes(self) -> int:
-        """Returns the number of input nodes in the graph.
+        """Number of input nodes.
 
-        Returns:
-            int: The number of input nodes in the graph.
+        Returns
+        -------
+        number_of_input_nodes : int
+            The number of input nodes in the graph.
         """
         return len(self._input_nodes)
 
     @property
     def number_of_output_nodes(self) -> int:
-        """Returns the number of output nodes in the graph.
+        """Number of output nodes.
 
-        Returns:
-            int: The number of output nodes in the graph.
+        Returns
+        -------
+        number_of_output_nodes : int
+            The number of output nodes in the graph.
         """
         return len(self._output_nodes)
 
     @property
     def non_input_nodes(self) -> list[int]:
-        """Returns the list of non-input nodes in the graph.
+        """List of non-input nodes, guaranteed duplicate-free.
 
-        Returns:
-            list[int]: The list of non-input nodes in the graph.
+        Returns
+        -------
+        non_input_nodes : list[int]
+            The list of non-input nodes in the graph.
         """
         return self.get_nodes_complement(self.input_nodes)
 
     @property
-    def output_nodes(self) -> list[int]:
-        """Returns the list of output nodes.
+    def non_output_nodes(self) -> list[int]:
+        """List of non-output nodes, guaranteed duplicate-free.
 
-        Returns:
-            list[int]: The list of output nodes.
+        Returns
+        -------
+        non_output_nodes : list[int]
+            The list of non-output nodes in the graph.
+        """
+        return self.get_nodes_complement(self.output_nodes)
+
+    @property
+    def output_nodes(self) -> list[int]:
+        """List of output nodes, guaranteed duplicate-free.
+
+        Returns
+        -------
+        output_nodes : list[int]
+            The list of output nodes.
         """
         return list(self._output_nodes) # copy of the output nodes list to avoid external modifications
 
     @property
     def input_nodes(self) -> list[int]:
-        """Returns the list of input nodes.
+        """List of input nodes, guaranteed duplicate-free.
 
-        Returns:
-            list[int]: The list of input nodes.
+        Returns
+        -------
+        input_nodes : list[int]
+            The list of input nodes.
         """
         return list(self._input_nodes) # copy of the input nodes list to avoid external modifications
 
     @property
     def nodes(self) -> list[int]:
-        """Returns a list of all nodes in the graph.
+        """List of all nodes in the graph, guaranteed duplicate-free.
 
-        Returns:
-            list[int]: A list of all nodes in the graph.
+        Returns
+        -------
+        nodes : list[int]
+            A list of all nodes in the graph.
         """
         return list(self._nodes) # copy of the nodes list to avoid external modifications
 
     def get_adjacency_matrix(self, rows_id: list[int], cols_id: list[int]) -> np.ndarray:
-        """Returns the adjacency matrix for the specified rows and columns.
+        """Return the submatrix of the adjacency matrix for the given rows and columns.
 
-        Args:
-            rows_id (list[int]): The row indices for the adjacency matrix.
-            cols_id (list[int]): The column indices for the adjacency matrix.
+        Parameters
+        ----------
+        rows_id : list[int]
+            Row node indices.
+        cols_id : list[int]
+            Column node indices.
 
-        Returns:
-            np.ndarray: The adjacency matrix for the specified rows and columns.
+        Returns
+        -------
+        adjacency_matrix : np.ndarray
+            The adjacency submatrix with shape ``(len(rows_id), len(cols_id))``.
         """
         return self._adjacency_matrix[np.ix_(rows_id, cols_id)]
 
     def get_nodes_complement(self, nodes: Iterable[int]) -> list[int]:
-        """Returns the list of nodes that are not in the given list of nodes.
+        """Return all nodes not in the given collection.
 
-        Args:
-            nodes (Iterable[int]): The list of nodes to find the complimentary nodes for.
+        Parameters
+        ----------
+        nodes : Iterable[int]
+            The nodes to exclude.
+
+        Returns
+        -------
+        complement : list[int]
+            The list of nodes that are not in the given collection.
         """
         return list(self._nodes - set(nodes)) # copy of the nodes list to avoid external modifications
 
 
     def __visualise__(self):
-        """Internal method to visualize the graph using Matplotlib.
-        Nodes are colored based on their type (input, output, or interior). Edges are labeled with their weights.
+        """Render the graph with Matplotlib.
+
+        Nodes are coloured by role (input, output, interior, or both).
+        Edges are labelled with their weights.
         """
         pos = nx.spring_layout(self.graph, seed=42)
 
@@ -155,16 +208,18 @@ class OpenGraph:
         plt.tight_layout()
 
     def output_svg(self, filename: str):
-        """Outputs the graph as an SVG file.
+        """Save the graph visualisation as an SVG file.
 
-        Args:
-            filename (str): The name of the file to save the SVG to.
+        Parameters
+        ----------
+        filename : str
+            Path of the output SVG file.
         """
         self.__visualise__()
         plt.savefig(filename, format="svg")
         plt.close()
 
     def visualise(self):
-        """Visualizes the graph using Matplotlib."""
+        """Display the graph visualisation in a Matplotlib window."""
         self.__visualise__()
         plt.show()
