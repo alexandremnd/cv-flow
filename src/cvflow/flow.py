@@ -2,10 +2,57 @@ import numpy as np
 
 from cvflow.graph import OpenGraph
 
-# TODO: The current implementation of check_flow and find_cvflow
-# uses least squares and thus minimises the L2 norm of the correction vector
-# which spread the correction onto many nodes instead of concentrating it on a few nodes.
-# A better solution would be to use a L1 minimisation from scipy.optimize.linprog (or even offer a choice of the norm L1/L2)
+def solve_l1(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[int, np.ndarray]:
+    """Solve the L1 minimisation problem for the given correction matrix and target vector.
+
+    Parameters
+    ----------
+    correction_matrix : np.ndarray
+        The matrix representing the corrections.
+    target_vector : np.ndarray
+        The target vector for the corrections.
+
+    Returns
+    -------
+    rank : int
+        The rank of the correction matrix.
+    solution : np.ndarray
+        The solution vector that minimizes the L1 norm of the corrections.
+    """
+    from scipy.optimize import linprog
+
+    num_vars = correction_matrix.shape[1]
+    c = np.ones(2 * num_vars)
+    A_eq = np.hstack((correction_matrix, -correction_matrix))
+    bounds = [(0, None)] * (2 * num_vars)
+
+    res = linprog(c, A_eq=A_eq, b_eq=target_vector, bounds=bounds, method='highs')
+    rank = np.linalg.matrix_rank(correction_matrix)
+
+    if res.success:
+        return rank, res.x[:num_vars] - res.x[num_vars:]  # Return the difference of positive and negative parts
+    else:
+        raise ValueError("L1 minimization failed: " + res.message)
+
+def solve_l2(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[int, np.ndarray]:
+    """Solve the L2 minimisation problem for the given correction matrix and target vector.
+
+    Parameters
+    ----------
+    correction_matrix : np.ndarray
+        The matrix representing the corrections.
+    target_vector : np.ndarray
+        The target vector for the corrections.
+
+    Returns
+    -------
+    rank : int
+        The rank of the correction matrix.
+    solution : np.ndarray
+        The solution vector that minimizes the L2 norm of the corrections.
+    """
+    solution_vector, _, rank, _ = np.linalg.lstsq(correction_matrix, target_vector, rcond=None)
+    return int(rank), solution_vector
 
 def create_g_entry(correction_vector: np.ndarray, nodes: list[int]) -> dict[int, float]:
     """Build a sparse g-map entry from a correction vector.
@@ -20,7 +67,6 @@ def create_g_entry(correction_vector: np.ndarray, nodes: list[int]) -> dict[int,
         Solution vector returned by ``np.linalg.lstsq``. Each element is
         the correction weight assigned to the node at the same position in
         `nodes`.
-    nodes : list[int]
         Ordered list of node IDs corresponding to the entries of
         `correction_vector`.
 
@@ -32,7 +78,7 @@ def create_g_entry(correction_vector: np.ndarray, nodes: list[int]) -> dict[int,
     """
     return {node: float(correction) for node, correction in zip(nodes, correction_vector) if abs(correction) > 1e-6}
 
-def check_flow(graph: OpenGraph, measurements: list[int]) -> tuple[bool, dict[int, float], dict[int, int]]:
+def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") -> tuple[bool, dict[int, float], dict[int, int]]:
     """Check if an OpenGraph satisfies the flow property for a given sequence of measurements.
 
     Parameters
@@ -43,6 +89,12 @@ def check_flow(graph: OpenGraph, measurements: list[int]) -> tuple[bool, dict[in
         An ordered sequence of nodes to be measured.
         ``measurements[0]`` is the first node to be measured,
         ``measurements[1]`` the second, and so on.
+    method : str, optional
+        The method used to solve the correction vector. Can be "l1" or "l2".
+        - "l2" (default) uses least squares minimisation, which may spread
+        the correction across many nodes.
+        - "l1" uses linear programming to minimise the L1 norm of the
+        correction vector, which may yield sparser corrections.
 
     Returns
     -------
@@ -71,7 +123,11 @@ def check_flow(graph: OpenGraph, measurements: list[int]) -> tuple[bool, dict[in
 
         augmented_correction_matrix = np.hstack((correction_matrix, target_vector.reshape(-1, 1)))
         rank_augmented = np.linalg.matrix_rank(augmented_correction_matrix)
-        correction_vector, _, rank_correction, _ = np.linalg.lstsq(correction_matrix, target_vector)
+
+        if method == "l2":
+            rank_correction, correction_vector = solve_l2(correction_matrix, target_vector)
+        else:
+            rank_correction, correction_vector = solve_l1(correction_matrix, target_vector)
 
         if rank_augmented != rank_correction:
             return False, {}, {}
@@ -81,13 +137,19 @@ def check_flow(graph: OpenGraph, measurements: list[int]) -> tuple[bool, dict[in
 
     return True, g, layer
 
-def find_cvflow(graph: OpenGraph) -> tuple[bool, dict[int, dict[int, float]], dict[int, int]]:
+def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, dict[int, float]], dict[int, int]]:
     """Find the CV-flow of the given OpenGraph.
 
     Parameters
     ----------
     graph : OpenGraph
         The graph to find the CV-flow for.
+    method : str, optional
+        The method used to solve the correction vector. Can be "l1" or "l2".
+        - "l2" (default) uses least squares minimisation, which may spread
+        the correction across many nodes.
+        - "l1" uses linear programming to minimise the L1 norm of the
+        correction vector, which may yield sparser corrections.
 
     Returns
     -------
@@ -121,7 +183,10 @@ def find_cvflow(graph: OpenGraph) -> tuple[bool, dict[int, dict[int, float]], di
             augmented_correction_matrix[node_index, -1] = 1.0
 
             rank_augmented = np.linalg.matrix_rank(augmented_correction_matrix)
-            correction_vector, _, rank_correction, _ = np.linalg.lstsq(correction_matrix, augmented_correction_matrix[:, -1])
+            if method == "l2":
+                rank_correction, correction_vector = solve_l2(correction_matrix, augmented_correction_matrix[:, -1])
+            else:
+                rank_correction, correction_vector = solve_l1(correction_matrix, augmented_correction_matrix[:, -1])
 
             if rank_augmented == rank_correction:
                 g[node] = create_g_entry(correction_vector, resolved_nodes)
