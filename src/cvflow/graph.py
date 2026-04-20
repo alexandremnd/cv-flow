@@ -19,11 +19,11 @@ class OpenGraph:
             The output nodes.
         """
 
-        self.graph: nx.Graph                = graph
+        self._graph: nx.Graph                = graph
         self._nodes : set[int]              = set(graph.nodes)
         self._input_nodes: set[int]         = set(input_nodes)
         self._output_nodes: set[int]        = set(output_nodes)
-        self._adjacency_matrix: np.ndarray  = nx.to_numpy_array(self.graph)
+        self._adjacency_matrix: np.ndarray  = nx.to_numpy_array(self._graph)
 
         self.__validate__()
 
@@ -136,8 +136,8 @@ class OpenGraph:
         """
         return list(self._nodes) # copy of the nodes list to avoid external modifications
 
-    def get_adjacency_matrix(self, rows_id: list[int], cols_id: list[int]) -> np.ndarray:
-        """Return the submatrix of the adjacency matrix for the given rows and columns.
+    def get_correction_matrix(self, rows_id: list[int], cols_id: list[int]) -> np.ndarray:
+        """Return the correction matrix for the given rows and columns.
 
         Parameters
         ----------
@@ -148,8 +148,8 @@ class OpenGraph:
 
         Returns
         -------
-        adjacency_matrix : np.ndarray
-            The adjacency submatrix with shape ``(len(rows_id), len(cols_id))``.
+        correction_matrix : np.ndarray
+            The correction matrix with shape ``(len(rows_id), len(cols_id))``.
         """
         return self._adjacency_matrix[np.ix_(rows_id, cols_id)]
 
@@ -175,10 +175,10 @@ class OpenGraph:
         Nodes are coloured by role (input, output, interior, or both).
         Edges are labelled with their weights.
         """
-        pos = nx.spring_layout(self.graph, seed=42)
+        pos = nx.spring_layout(self._graph, seed=42)
 
         node_colors = []
-        for node in self.graph.nodes:
+        for node in self._graph.nodes:
             if node in self.input_nodes and node in self.output_nodes:
                 node_colors.append("#a855f7")  # purple: both input and output
             elif node in self.input_nodes:
@@ -188,12 +188,12 @@ class OpenGraph:
             else:
                 node_colors.append("#3b82f6")  # blue: interior (measured)
 
-        edge_labels = {(u, v): f"{self.graph[u][v].get('weight', 1.0):.2f}" for u, v in self.graph.edges}
+        edge_labels = {(u, v): f"{self._graph[u][v].get('weight', 1.0):.2f}" for u, v in self._graph.edges}
 
-        nx.draw_networkx_nodes(self.graph, pos, node_color=node_colors, node_size=600)
-        nx.draw_networkx_labels(self.graph, pos, font_color="white", font_weight="bold")
-        nx.draw_networkx_edges(self.graph, pos, width=2.0, alpha=0.7)
-        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels, font_size=8)
+        nx.draw_networkx_nodes(self._graph, pos, node_color=node_colors, node_size=600)
+        nx.draw_networkx_labels(self._graph, pos, font_color="white", font_weight="bold")
+        nx.draw_networkx_edges(self._graph, pos, width=2.0, alpha=0.7)
+        nx.draw_networkx_edge_labels(self._graph, pos, edge_labels=edge_labels, font_size=8)
 
         legend_elements = [
             Line2D([0], [0], marker="o", color="w", markerfacecolor="#22c55e", markersize=10, label="Input"),

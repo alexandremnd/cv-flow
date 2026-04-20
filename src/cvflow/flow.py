@@ -64,9 +64,8 @@ def create_g_entry(correction_vector: np.ndarray, nodes: list[int]) -> dict[int,
     Parameters
     ----------
     correction_vector : np.ndarray
-        Solution vector returned by ``np.linalg.lstsq``. Each element is
-        the correction weight assigned to the node at the same position in
-        `nodes`.
+        Solution vector. Each element is the correction weight
+        assigned to the node at the same position in `nodes`.
         Ordered list of node IDs corresponding to the entries of
         `correction_vector`.
 
@@ -85,7 +84,7 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
     ----------
     graph : OpenGraph
         The graph structure, including its nodes, edges, input nodes, and output nodes.
-    measurements : Iterable[int]
+    measurements : list[int]
         An ordered sequence of nodes to be measured.
         ``measurements[0]`` is the first node to be measured,
         ``measurements[1]`` the second, and so on.
@@ -118,7 +117,7 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
         past_nodes.append(node)
         future_nodes = graph.get_nodes_complement(past_nodes + graph.input_nodes)
 
-        correction_matrix = graph.get_adjacency_matrix(rows_id=past_nodes, cols_id=future_nodes)
+        correction_matrix = graph.get_correction_matrix(rows_id=past_nodes, cols_id=future_nodes)
         target_vector = np.zeros(correction_matrix.shape[0])
         target_vector[-1] = 1.0
 
@@ -174,7 +173,7 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
     while True:
         nodes_in_layer: list[int] = []
 
-        correction_matrix = graph.get_adjacency_matrix(rows_id=past_nodes, cols_id=resolved_nodes)
+        correction_matrix = graph.get_correction_matrix(rows_id=past_nodes, cols_id=resolved_nodes)
         augmented_correction_matrix = np.hstack((correction_matrix, np.zeros((correction_matrix.shape[0], 1))))
 
         for node in graph.nodes:
