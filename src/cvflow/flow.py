@@ -91,10 +91,11 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
         ``measurements[1]`` the second, and so on.
     method : str, optional
         The method used to solve the correction vector. Can be "l1" or "l2".
-        - "l2" (default) uses least squares minimisation, which may spread
-        the correction across many nodes.
-        - "l1" uses linear programming to minimise the L1 norm of the
-        correction vector, which may yield sparser corrections.
+            - "l2" (default) uses least squares minimisation, which may spread
+            the correction across many nodes.
+
+            - "l1" uses linear programming to minimise the L1 norm of the
+            correction vector, which may yield sparser corrections.
 
     Returns
     -------
@@ -146,10 +147,11 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
         The graph to find the CV-flow for.
     method : str, optional
         The method used to solve the correction vector. Can be "l1" or "l2".
-        - "l2" (default) uses least squares minimisation, which may spread
-        the correction across many nodes.
-        - "l1" uses linear programming to minimise the L1 norm of the
-        correction vector, which may yield sparser corrections.
+            - "l2" (default) uses least squares minimisation, which may spread
+            the correction across many nodes.
+
+            - "l1" uses linear programming to minimise the L1 norm of the
+            correction vector, which may yield sparser corrections.
 
     Returns
     -------

@@ -18,12 +18,16 @@ class CommandKind(Enum):
 class N():
     """Preparation command.
 
-    Attributes:
-        node (Node): The node to which this command is applied.
-        squeezing_ratio (float): The ratio controlling the squeezing magnitude.
-            Defaults to 10.0. Higher values increase the squeezing effect.
-        squeezing_angle (float): The angle in degrees controlling the direction
-            of the squeezing transformation. Defaults to 0.0.
+    Attributes
+    ----------
+    node : Node
+        The node to which this command is applied.
+    squeezing_ratio : float
+        The ratio controlling the squeezing magnitude.
+        Defaults to 10.0. Higher values increase the squeezing effect.
+    squeezing_angle : float
+        The angle in degrees controlling the direction of the squeezing
+        transformation. Defaults to 0.0.
     """
     node: Node
     squeezing_ratio: float = 10.0
@@ -37,17 +41,23 @@ class N():
 class M():
     """Measurement command.
 
-    A measurement command is represented by a momentum homodyne measurement after applying the unitary transformation:
+    A measurement command is represented by a momentum homodyne measurement
+    after applying the unitary transformation:
 
-    $
-        U(\\alpha, \\beta, \\gamma) = e^(i \\alpha Q) e^(i \\beta Q^2) e^(i \\gamma Q^3)
-    $
+    .. math::
 
-    Attributes:
-        node (Node): The node to which this command is applied.
-        alpha (float): The amplitude of the unitary Defaults to 0.0.
-        beta (float): The angle in radians for the measurement basis. Defaults to 0.0
-        gamma (float): The angle in radians for the measurement basis. Defaults to 0.0.
+        U(\\alpha, \\beta, \\gamma) = e^{i \\alpha Q} e^{i \\beta Q^2} e^{i \\gamma Q^3}
+
+    Attributes
+    ----------
+    node : Node
+        The node to which this command is applied.
+    alpha : float
+        The amplitude of the unitary. Defaults to 0.0.
+    beta : float
+        The angle in radians for the measurement basis. Defaults to 0.0.
+    gamma : float
+        The angle in radians for the measurement basis. Defaults to 0.0.
     """
     node: Node
     alpha: float = 0.0
@@ -60,12 +70,18 @@ class M():
 
 @dataclasses.dataclass(repr=False)
 class E():
-    """Entanglement command.
+    """Entanglement command represented by the following unitary transformation:
 
-    Attributes:
-        node1 (Node): The first node involved in the entanglement.
-        node2 (Node): The second node involved in the entanglement.
-        weight (float): The weight of the edge representing the entanglement. Defaults to 1.0.
+    .. math::
+
+        E_{ij}(w) = e^{i w Q_i \\otimes Q_j}
+
+    Attributes
+    ----------
+    nodes : tuple[Node, Node]
+        The pair of nodes to entangle.
+    weight : float
+        The weight of the edge representing the entanglement. Defaults to 1.0.
     """
     nodes: tuple[Node, Node]
     weight: float = 1.0
@@ -76,11 +92,18 @@ class E():
 
 @dataclasses.dataclass(repr=False)
 class X():
-    """X correction command.
+    """X correction command represented by the following unitary transformation:
 
-    Attributes:
-        node (Node): The node to which this command is applied.
-        amplitude (float): The amplitude of the X correction. Defaults to 0.0.
+    .. math::
+
+        X_i(s) = e^{- i s P_i}
+
+    Attributes
+    ----------
+    node : Node
+        The node to which this command is applied.
+    amplitude : float
+        The amplitude of the X correction. Defaults to 0.0.
     """
     node: Node
     amplitude: float = 0.0
@@ -91,11 +114,18 @@ class X():
 
 @dataclasses.dataclass(repr=False)
 class Z():
-    """Z correction command.
+    """Z correction command represented by the following unitary transformation:
 
-    Attributes:
-        node (Node): The node to which this command is applied.
-        amplitude (float): The amplitude of the Z correction. Defaults to 0.0.
+    .. math::
+
+        Z_i(s) = e^{i s Q_i}
+
+    Attributes
+    ----------
+    node : Node
+        The node to which this command is applied.
+    amplitude : float
+        The amplitude of the Z correction. Defaults to 0.0.
     """
     node: Node
     amplitude: float = 0.0
