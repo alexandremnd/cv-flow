@@ -196,6 +196,33 @@ class OpenGraph:
         """
         return list(self._nodes - set(nodes)) # copy of the nodes list to avoid external modifications
 
+    def __getitem__(self, key: tuple[int, int]) -> float:
+        """Access an edge weight using ``graph[a, b]``.
+
+        Parameters
+        ----------
+        key : tuple[int, int]
+            A pair ``(a, b)`` of node ids.
+
+        Returns
+        -------
+        weight : float
+            The edge weight between ``a`` and ``b`` if the edge exists, else ``0.0``.
+        """
+        if not isinstance(key, tuple) or len(key) != 2:
+            raise TypeError("Use OpenGraph[a, b] with exactly two node ids.")
+
+        a, b = key
+        if not isinstance(a, int) or not isinstance(b, int):
+            raise TypeError("Node ids must be integers.")
+
+        if a not in self._nodes or b not in self._nodes:
+            raise KeyError(f"Nodes must exist in the graph: got ({a}, {b}).")
+
+        if not self._graph.has_edge(a, b):
+            return 0.0
+
+        return float(self._graph[a][b].get("weight", 1.0))
 
     def __visualise__(self):
         """Render the graph with Matplotlib.
