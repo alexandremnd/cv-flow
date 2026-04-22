@@ -19,11 +19,11 @@ class OpenGraph:
             The output nodes.
         """
 
-        self._graph: nx.Graph                = graph
+        self._graph: nx.Graph               = graph
         self._nodes : set[int]              = set(graph.nodes)
         self._input_nodes: set[int]         = set(input_nodes)
         self._output_nodes: set[int]        = set(output_nodes)
-        self._adjacency_matrix: np.ndarray  = nx.to_numpy_array(self._graph)
+        self._adjacency_matrix: np.ndarray  = nx.to_numpy_array(self._graph, weight="weight", nodelist=sorted(graph.nodes))
 
         self.__validate__()
 
