@@ -49,7 +49,8 @@ class TestPathGraph:
 
     def test_check_flow_layers(self, path_og):
         _, _, layer = check_flow(path_og, self.MEASUREMENTS)
-        assert layer == {4: 0, 3: 1, 2: 2, 1: 3, 0: 4}
+        # assert layer == {4: 0, 3: 1, 2: 2, 1: 3, 0: 4} OLD VERSION
+        assert layer == {0: [4], 1: [3], 2: [2], 3: [1], 4: [0]}
 
     def test_check_flow_wrong_order_fails(self, path_og):
         # Measuring in reverse order cannot satisfy the flow constraint.
@@ -71,7 +72,8 @@ class TestPathGraph:
 
     def test_find_cvflow_layers(self, path_og):
         _, _, layer = find_cvflow(path_og)
-        assert layer == {4: 0, 3: 1, 2: 2, 1: 3, 0: 4}
+        # assert layer == {4: 0, 3: 1, 2: 2, 1: 3, 0: 4} OLD VERSION
+        assert layer == {0: [4], 1: [3], 2: [2], 3: [1], 4: [0]}
 
 
 # ──────────────────────── cycle graph ─────────────────────────────
@@ -100,6 +102,11 @@ class TestCycleGraph:
         assert g[1] == pytest.approx({0: 0.5, 2: 0.5, 4: -0.5})
         assert g[3] == pytest.approx({0: -0.5, 2: 0.5, 4: 0.5})
         assert g[5] == pytest.approx({0: 0.5, 2: -0.5, 4: 0.5})
+
+    def test_find_cvflow_layers(self, cycle_og):
+        _, _, layer = find_cvflow(cycle_og)
+        # All measured nodes are in the same layer since they are measured simultaneously
+        assert layer == {0: [0, 2, 4], 1: [1, 3, 5]}
 
 
 

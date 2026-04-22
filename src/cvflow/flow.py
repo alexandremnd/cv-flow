@@ -77,7 +77,7 @@ def create_g_entry(correction_vector: np.ndarray, nodes: list[int]) -> dict[int,
     """
     return {node: float(correction) for node, correction in zip(nodes, correction_vector) if abs(correction) > 1e-6}
 
-def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") -> tuple[bool, dict[int, float], dict[int, int]]:
+def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") -> tuple[bool, dict[int, float], dict[int, list[int]]]:
     """Check if an OpenGraph satisfies the flow property for a given sequence of measurements.
 
     Parameters
@@ -102,8 +102,8 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
         True if the measurement sequence satisfies the flow property, False otherwise.
     g : dict[int, float]
         A dictionary mapping each measured node to its corresponding correction value on the graph.
-    layer : dict[int, int]
-        A dictionary mapping each measured node to its layer in the flow.
+    layer : dict[int, list[int]]
+        A dictionary mapping each layer to all nodes that can be measured simultaneously in the flow.
         The lowest layer corresponds to the output nodes.
     """
     if not all(node in graph.nodes for node in measurements):
@@ -111,7 +111,7 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
 
     past_nodes = []
     g = {}
-    layer = {node: 0 for node in graph.output_nodes}
+    layer = {0: graph.output_nodes}
 
     for i, node in enumerate(measurements):
         past_nodes.append(node)
@@ -133,11 +133,11 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
             return False, {}, {}
 
         g[node] = create_g_entry(correction_vector, future_nodes)
-        layer[node] = len(measurements) - i
+        layer[len(measurements) - i] = [node]
 
     return True, g, layer
 
-def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, dict[int, float]], dict[int, int]]:
+def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, dict[int, float]], dict[int, list[int]]]:
     """Find the CV-flow of the given OpenGraph.
 
     Parameters
@@ -158,12 +158,12 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
         True if the CV-flow exists, False otherwise.
     g : dict[int, dict[int, float]]
         A dictionary mapping each node to the required correction to achieve the CV-flow.
-    layer : dict[int, int]
-        A dictionary mapping each node to its layer in the CV-flow.
+    layer : dict[int, list[int]]
+        A dictionary mapping each layer to all nodes that can be measured simultaneously in the CV-flow.
         The lowest layer corresponds to the output nodes.
     """
 
-    layer: dict[int, int] = {node: 0 for node in graph.output_nodes}
+    layer: dict[int, list[int]] = {0: graph.output_nodes}
     g: dict[int, dict[int, float]] = {}
 
     past_nodes: list[int] = graph.non_output_nodes
@@ -191,7 +191,6 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
 
             if rank_augmented == rank_correction:
                 g[node] = create_g_entry(correction_vector, resolved_nodes)
-                layer[node] = iteration
                 nodes_in_layer.append(node)
 
             # We reset the augmented matrix RHS
@@ -204,6 +203,7 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
                 return False, {}, {}
         else:
             resolved_nodes.extend(nodes_in_layer)
+            layer[iteration] = nodes_in_layer
 
             # Remove the nodes that have been corrected in this iteration
             # They now become part of the output nodes
