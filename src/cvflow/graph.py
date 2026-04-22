@@ -45,8 +45,8 @@ class OpenGraph:
         if not all(node in self._nodes for node in self._output_nodes):
             raise ValueError("All output nodes must be present in the graph.")
 
-        if min(self._nodes) != 0:
-            raise ValueError("Node indices must start from 0.")
+        if len(self._nodes) == 0:
+            raise ValueError("The graph must contain at least one node.")
 
     @property
     def number_of_nodes(self) -> int:
@@ -135,6 +135,34 @@ class OpenGraph:
             A list of all nodes in the graph.
         """
         return list(self._nodes) # copy of the nodes list to avoid external modifications
+
+    @property
+    def edges(self) -> list[tuple[int, int, float]]:
+        """List of all edges in the graph, guaranteed duplicate-free.
+
+        Returns
+        -------
+        edges : list[tuple[int, int, float]]
+            A list of all edges in the graph, where each edge is represented as a tuple (source_node, target_node, weight).
+        """
+        return [(u, v, self._graph[u][v].get("weight", 1.0)) for u, v in self._graph.edges]
+
+    def get_neighbours(self, node: int) -> list[int]:
+        """Return the list of neighbours for a given node.
+
+        Parameters
+        ----------
+        node : int
+            The node for which to retrieve the neighbours.
+
+        Returns
+        -------
+        neighbours : list[int]
+            A list of neighbouring nodes connected to the given node.
+        """
+        if node not in self._nodes:
+            raise ValueError(f"Node {node} is not present in the graph.")
+        return list(self._graph.neighbors(node))
 
     def get_correction_matrix(self, rows_id: list[int], cols_id: list[int]) -> np.ndarray:
         """Return the correction matrix for the given rows and columns.
