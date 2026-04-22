@@ -6,16 +6,20 @@ readme = "README.md"
 authors = [
     { name = "Alexandre Menard", email = "alexxandre.mnd+dev@gmail.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "matplotlib>=3.10.8",
+    "mrmustard>=0.7.0,<0.8.0",
     "networkx>=3.6.1",
-    "numpy>=2.4.4",
+    "numpy>=1.23.5,<2.0.0",
     "scipy>=1.17.1",
 ]
 
 [project.scripts]
 cvflow = "cvflow:main"
+
+[tool.uv]
+environments = ["sys_platform != 'win32'"]
 
 [build-system]
 requires = ["uv_build>=0.10.12,<0.11.0"]
@@ -23,5 +27,8 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.0.3",
+    "furo>=2024.1.29",
+    "pytest>=8.0.0",
+    "sphinx>=7.0.0",
+    "sphinx-autodoc-typehints>=2.0.0",
 ]
