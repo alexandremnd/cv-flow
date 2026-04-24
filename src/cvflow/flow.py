@@ -26,13 +26,15 @@ def solve_l1(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[
     A_eq = np.hstack((correction_matrix, -correction_matrix))
     bounds = [(0, None)] * (2 * num_vars)
 
+    print(correction_matrix)
+    print(target_vector)
     res = linprog(c, A_eq=A_eq, b_eq=target_vector, bounds=bounds, method='highs')
     rank = np.linalg.matrix_rank(correction_matrix)
 
     if res.success:
         return rank, res.x[:num_vars] - res.x[num_vars:]  # Return the difference of positive and negative parts
     else:
-        raise ValueError("L1 minimization failed: " + res.message)
+        return rank, np.zeros(num_vars)  # Return zero correction if optimization fails
 
 def solve_l2(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[int, np.ndarray]:
     """Solve the L2 minimisation problem for the given correction matrix and target vector.
@@ -51,6 +53,8 @@ def solve_l2(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[
     solution : np.ndarray
         The solution vector that minimizes the L2 norm of the corrections.
     """
+    print("Correction matrix:\n", correction_matrix)
+    print("Target vector:\n", target_vector)
     solution_vector, _, rank, _ = np.linalg.lstsq(correction_matrix, target_vector, rcond=None)
     return int(rank), solution_vector
 
@@ -90,11 +94,11 @@ def check_flow(graph: OpenGraph, measurements: list[int], method: str = "l2") ->
         ``measurements[1]`` the second, and so on.
     method : str, optional
         The method used to solve the correction vector. Can be "l1" or "l2".
-            - "l2" (default) uses least squares minimisation, which may spread
-            the correction across many nodes.
 
-            - "l1" uses linear programming to minimise the L1 norm of the
-            correction vector, which may yield sparser corrections.
+        - "l2" (default) uses least squares minimisation, which may spread
+          the correction across many nodes.
+        - "l1" uses linear programming to minimise the L1 norm of the
+          correction vector, which may yield sparser corrections.
 
     Returns
     -------
@@ -146,11 +150,11 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
         The graph to find the CV-flow for.
     method : str, optional
         The method used to solve the correction vector. Can be "l1" or "l2".
-            - "l2" (default) uses least squares minimisation, which may spread
-            the correction across many nodes.
 
-            - "l1" uses linear programming to minimise the L1 norm of the
-            correction vector, which may yield sparser corrections.
+        - "l2" (default) uses least squares minimisation, which may spread
+          the correction across many nodes.
+        - "l1" uses linear programming to minimise the L1 norm of the
+          correction vector, which may yield sparser corrections.
 
     Returns
     -------
