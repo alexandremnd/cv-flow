@@ -58,15 +58,36 @@ class M():
         The angle in radians for the measurement basis. Defaults to 0.0.
     gamma : float
         The angle in radians for the measurement basis. Defaults to 0.0.
+    x_domain : dict[Node, float]
+        A dictionary giving how the correction depends on the measurement outcomes.
+        The keys are the measured nodes that influence the current correction and the values are the corresponding amplitudes.
+        Defaults to an empty dictionary.
+    z_domain : dict[Node, float]
+        A dictionary giving how the correction depends on the measurement outcomes.
+        The keys are the measured nodes that influence the current correction and the values are the corresponding amplitudes.
+        Defaults to an empty dictionary.
     """
     node: Node
     alpha: float = 0.0
     beta: float = 0.0
     gamma: float = 0.0
+    x_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
+    z_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
     kind: ClassVar[Literal[CommandKind.M]] = CommandKind.M
 
     def __str__(self) -> str:
-        return f"M({self.node}, α={self.alpha}, β={self.beta}, γ={self.gamma})"
+        parts = [str(self.node)]
+        if self.alpha != 0.0:
+            parts.append(f"α={self.alpha}")
+        if self.beta != 0.0:
+            parts.append(f"β={self.beta}")
+        if self.gamma != 0.0:
+            parts.append(f"γ={self.gamma}")
+        if self.x_domain:
+            parts.append(f"x_domain={self.x_domain}")
+        if self.z_domain:
+            parts.append(f"z_domain={self.z_domain}")
+        return f"M({', '.join(parts)})"
 
 @dataclasses.dataclass(repr=False)
 class E():
@@ -104,13 +125,23 @@ class X():
         The node to which this command is applied.
     amplitude : float
         The amplitude of the X correction. Defaults to 0.0.
+    x_domain : dict[Node, float]
+        A dictionary giving how the correction depends on the measurement outcomes.
+        The keys are the measured nodes that influence the current correction and the values are the corresponding amplitudes.
+        Defaults to an empty dictionary.
     """
     node: Node
     amplitude: float = 0.0
+    x_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
     kind: ClassVar[Literal[CommandKind.X]] = CommandKind.X
 
     def __str__(self) -> str:
-        return f"X({self.node}, a={self.amplitude})"
+        parts = [str(self.node)]
+        if self.amplitude != 0.0:
+            parts.append(f"a={self.amplitude}")
+        if self.x_domain:
+            parts.append(f"domain={self.x_domain}")
+        return f"X({', '.join(parts)})"
 
 @dataclasses.dataclass(repr=False)
 class Z():
@@ -126,13 +157,23 @@ class Z():
         The node to which this command is applied.
     amplitude : float
         The amplitude of the Z correction. Defaults to 0.0.
+    z_domain : dict[Node, float]
+        A dictionary giving how the correction depends on the measurement outcomes.
+        The keys are the measured nodes that influence the current correction and the values are the corresponding amplitudes.
+        Defaults to an empty dictionary.
     """
     node: Node
     amplitude: float = 0.0
+    z_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
     kind: ClassVar[Literal[CommandKind.Z]] = CommandKind.Z
 
     def __str__(self) -> str:
-        return f"Z({self.node}, a={self.amplitude})"
+        parts = [str(self.node)]
+        if self.amplitude != 0.0:
+            parts.append(f"a={self.amplitude}")
+        if self.z_domain:
+            parts.append(f"domain={self.z_domain}")
+        return f"Z({', '.join(parts)})"
 
 Command = N | M | E | X | Z
 Correction = X | Z
