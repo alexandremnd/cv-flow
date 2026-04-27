@@ -26,8 +26,6 @@ def solve_l1(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[
     A_eq = np.hstack((correction_matrix, -correction_matrix))
     bounds = [(0, None)] * (2 * num_vars)
 
-    print(correction_matrix)
-    print(target_vector)
     res = linprog(c, A_eq=A_eq, b_eq=target_vector, bounds=bounds, method='highs')
     rank = np.linalg.matrix_rank(correction_matrix)
 
@@ -53,8 +51,7 @@ def solve_l2(correction_matrix: np.ndarray, target_vector: np.ndarray) -> tuple[
     solution : np.ndarray
         The solution vector that minimizes the L2 norm of the corrections.
     """
-    print("Correction matrix:\n", correction_matrix)
-    print("Target vector:\n", target_vector)
+
     solution_vector, _, rank, _ = np.linalg.lstsq(correction_matrix, target_vector, rcond=None)
     return int(rank), solution_vector
 

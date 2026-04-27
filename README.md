@@ -22,7 +22,7 @@ In continuous variable MBQC, a quantum computation is described by an open graph
 
 ## Installation
 
-Requires Python 3.11. Install with [uv](https://github.com/astral-sh/uv):
+Requires Python 3.12. Install with [uv](https://github.com/astral-sh/uv):
 
 ```bash
 uv sync

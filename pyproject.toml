@@ -6,12 +6,12 @@ readme = "README.md"
 authors = [
     { name = "Alexandre Menard", email = "alexxandre.mnd+dev@gmail.com" }
 ]
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "matplotlib>=3.10.8",
-    "mrmustard>=0.7.0,<0.8.0",
+    "mrmustard>=1.0.0a1",
     "networkx>=3.6.1",
-    "numpy>=1.23.5,<2.0.0",
+    "numpy>=2.0.0",
     "scipy>=1.17.1",
 ]
 
@@ -29,6 +29,6 @@ build-backend = "uv_build"
 dev = [
     "furo>=2024.1.29",
     "pytest>=8.0.0",
-    "sphinx>=7.0.0",
+    "sphinx>=8.0.0",
     "sphinx-autodoc-typehints>=2.0.0",
 ]
