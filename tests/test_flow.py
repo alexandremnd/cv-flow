@@ -12,6 +12,10 @@ def path_og():
     """Path graph 0-1-2-3-4, input=[0], output=[4]."""
     return OpenGraph(graph=nx.path_graph(5), input_nodes=[0], output_nodes=[4])
 
+@pytest.fixture
+def path_og_no_flow():
+    """Path graph 0-1-2-3-4, input=[0, 1], output=[4]. This violates the flow constraint since 0 cannot be corrected by 1."""
+    return OpenGraph(graph=nx.path_graph(5), input_nodes=[0, 1], output_nodes=[4])
 
 @pytest.fixture
 def cycle_og():
@@ -74,6 +78,21 @@ class TestPathGraph:
         _, _, layer = find_cvflow(path_og)
         # assert layer == {4: 0, 3: 1, 2: 2, 1: 3, 0: 4} OLD VERSION
         assert layer == {0: [4], 1: [3], 2: [2], 3: [1], 4: [0]}
+
+class TestPathGraphNoFlow:
+    MEASUREMENTS = [0, 1, 2]
+
+    def test_check_flow_not_exists(self, path_og_no_flow):
+        has_flow, g, layer = check_flow(path_og_no_flow, self.MEASUREMENTS)
+        assert not has_flow
+        assert g == {}
+        assert layer == {}
+
+    def test_find_cvflow_not_exists(self, path_og_no_flow):
+        has_flow, g, layer = find_cvflow(path_og_no_flow)
+        assert not has_flow
+        assert g == {}
+        assert layer == {}
 
 
 # ──────────────────────── cycle graph ─────────────────────────────
