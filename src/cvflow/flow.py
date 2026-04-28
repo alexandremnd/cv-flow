@@ -167,14 +167,19 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
     layer: dict[int, list[int]] = {0: graph.output_nodes}
     g: dict[int, dict[int, float]] = {}
 
+    input_nodes: set[int] = set(graph.input_nodes)
     past_nodes: list[int] = graph.non_output_nodes
+
+    # Resolved nodes are all nodes measured, but do not represents the column span of the correction matrix
+    # Future nodes are all the measured nodes except the input nodes, and represent the column span of the correction matrix
     resolved_nodes: list[int] = graph.output_nodes
+    future_nodes: list[int] = graph.output_nodes
 
     iteration: int = 1
     while True:
         nodes_in_layer: list[int] = []
 
-        correction_matrix = graph.get_correction_matrix(rows_id=past_nodes, cols_id=resolved_nodes)
+        correction_matrix = graph.get_correction_matrix(rows_id=past_nodes, cols_id=future_nodes)
         augmented_correction_matrix = np.hstack((correction_matrix, np.zeros((correction_matrix.shape[0], 1))))
 
         for node in graph.nodes:
@@ -204,6 +209,10 @@ def find_cvflow(graph: OpenGraph, method: str = "l2") -> tuple[bool, dict[int, d
                 return False, {}, {}
         else:
             resolved_nodes.extend(nodes_in_layer)
+            for node in nodes_in_layer:
+                if node not in input_nodes:
+                    future_nodes.append(node)
+
             layer[iteration] = nodes_in_layer
 
             # Remove the nodes that have been corrected in this iteration
