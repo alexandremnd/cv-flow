@@ -27,11 +27,11 @@ class N():
         Defaults to 10.0. Higher values increase the squeezing effect.
     squeezing_angle : float
         The angle in degrees controlling the direction of the squeezing
-        transformation. Defaults to 0.0.
+        transformation. Defaults to π/2.
     """
     node: Node
-    squeezing_ratio: float = 10.0
-    squeezing_angle: float = 0.0
+    squeezing_ratio: float = 2.0
+    squeezing_angle: float = 1.570796326794897 # π/2
     kind: ClassVar[Literal[CommandKind.N]] = CommandKind.N
 
     def __str__(self) -> str:

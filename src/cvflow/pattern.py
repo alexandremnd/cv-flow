@@ -3,6 +3,8 @@ from collections import defaultdict
 from cvflow.command import Command, CommandKind, N, E, M, X, Z, Node
 from cvflow.graph import OpenGraph
 
+import numpy as np
+
 class Pattern:
     """A sequence of commands applied to a graph state.
 
@@ -11,8 +13,9 @@ class Pattern:
     _commands : list[Command]
         The list of commands in the pattern.
     """
-    def __init__(self, commands: list[Command]):
+    def __init__(self, commands: list[Command], input_nodes: list[Node]):
         self._commands = commands
+        self._input_nodes = set(input_nodes)
 
         self.check_validity()
 
@@ -33,7 +36,7 @@ class Pattern:
             If the pattern is not valid according to the rules of command
             application.
         """
-        initialised_nodes = set()
+        initialised_nodes = self._input_nodes.copy()
 
         for i, cmd in enumerate(self._commands):
             if cmd.kind == CommandKind.N:
@@ -97,7 +100,7 @@ class Pattern:
         return "\n".join(f"{i+1:0{width}d}) {cmd}" for i, cmd in enumerate(self._commands))
 
 
-def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]]) -> Pattern:
+def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]], squeezing_params: dict[int, tuple[float, float]] = {}) -> Pattern:
     """Convert an OpenGraph with a flow to a Pattern.
 
     This function takes a flow and converts it into a Pattern by generating
@@ -117,6 +120,10 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
         The layering of nodes for measurement order. Maps layer numbers
         to lists of nodes that should be measured in that layer.
         Structure: {layer_num: [node1, node2, ...]}.
+    squeezing_params : dict[int, tuple[float, float]], optional
+        Optional squeezing parameters for each node. Maps node numbers to
+        tuples of (squeezing_ratio, squeezing_angle). If not provided, defaults
+        to a squeezing ratio of 2.0 and angle of π/2 for all nodes
 
     Returns
     ------
@@ -128,8 +135,9 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
     command_list: list[Command] = []
 
     # Prepare all nodes
-    for node_to_measure in graph.nodes:
-        command_list.append(N(node_to_measure))
+    for node_to_measure in graph.non_input_nodes:
+        squeezing_ratio, squeezing_angle = squeezing_params.get(node_to_measure, (2.0, np.pi/2))
+        command_list.append(N(node_to_measure, squeezing_ratio=squeezing_ratio, squeezing_angle=squeezing_angle))  # type: ignore
 
     # Entangle according to the graph edges
     for node1, node2, weight in graph.edges:
@@ -137,7 +145,7 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
 
     measured_nodes = set()
     max_layer = max(layer.keys())
-    for layer_idx in range(max_layer, -1, -1):
+    for layer_idx in range(max_layer, 0, -1):
         # Measure nodes in the current layer
         for node_to_measure in layer[layer_idx]:
             command_list.append(M(node_to_measure))
@@ -164,4 +172,4 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
             command_list.append(Z(z_node, 0, z_domain=z_corr))
 
 
-    return Pattern(command_list)
+    return Pattern(command_list, input_nodes=graph.input_nodes)
