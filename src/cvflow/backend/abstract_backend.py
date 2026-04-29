@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from cvflow.command import CommandKind
 from cvflow.pattern import Pattern
 
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 class AbstractBackend(ABC):
     """Abstract base class for CV-MBQC simulation backends.
@@ -29,16 +32,24 @@ class AbstractBackend(ABC):
                 case CommandKind.E:
                     self.entangle_modes(cmd.nodes, cmd.weight)
                 case CommandKind.M:
+                    # TODO: correction handling is missing
                     outcome = self.measure_mode(cmd.node, cmd.alpha, cmd.beta, cmd.gamma)
                     self.measurement_results[cmd.node] = outcome
                 case CommandKind.X:
-                    for node, amplitude in cmd.x_domain.items():
-                        cmd.amplitude -= self.measurement_results[node] * amplitude
-                    self.apply_x_correction(cmd.node, cmd.amplitude)
+                    # cmd.amplitude should not be updated in place: it
+                    # would be surprising that running a pattern would
+                    # modify it, and that we get a different result if
+                    # we run it again.
+                    correction_amplitude = self._correction_amplitude(cmd.amplitude, cmd.x_domain)
+                    self.apply_x_correction(cmd.node, correction_amplitude)
                 case CommandKind.Z:
-                    for node, amplitude in cmd.z_domain.items():
-                        cmd.amplitude -= self.measurement_results[node] * amplitude
-                    self.apply_z_correction(cmd.node, cmd.amplitude)
+                    correction_amplitude = self._correction_amplitude(cmd.amplitude, cmd.z_domain)
+                    self.apply_z_correction(cmd.node, correction_amplitude)
+
+    def _correction_amplitude(correction_amplitude: float, domain: Mapping[Node, float]) -> float:
+        for node, amplitude in domain.items():
+            correction_amplitude -= self.measurement_results[node] * amplitude
+        return correction_amplitude
 
     # ------------------------------------------------------------------
     # Abstract interface — one method per command kind
