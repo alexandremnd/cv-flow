@@ -71,6 +71,8 @@ class M():
     alpha: float = 0.0
     beta: float = 0.0
     gamma: float = 0.0
+    # TODO: X and Z commands have an amplitude attribute, should we
+    # have one (or two, one for X and one for Z) here?
     x_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
     z_domain: dict[Node, float] = dataclasses.field(default_factory=dict)
     kind: ClassVar[Literal[CommandKind.M]] = CommandKind.M
