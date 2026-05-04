@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 
-from cvflow.command import CommandKind
+from cvflow.command import CommandKind, Node
 from cvflow.pattern import Pattern
 
 
@@ -14,14 +15,20 @@ class AbstractBackend(ABC):
     def __init__(self):
         self.measurement_results : dict[int, float] = {}
 
-    def run(self, pattern: Pattern) -> None:
+    def run(self, pattern: Pattern, input_state) -> None:
         """Execute every command in *pattern* sequentially.
 
         Parameters
         ----------
         pattern : Pattern
             The pattern to run.
+        input_state : any
+            The input state to the pattern.  The type and interpretation of this
+            object is backend-dependent.
         """
+        self.reset()
+        self.insert_input_state(input_state)
+
         for cmd in pattern._commands:
             match cmd.kind:
                 case CommandKind.N:
@@ -32,17 +39,39 @@ class AbstractBackend(ABC):
                     outcome = self.measure_mode(cmd.node, cmd.alpha, cmd.beta, cmd.gamma)
                     self.measurement_results[cmd.node] = outcome
                 case CommandKind.X:
-                    for node, amplitude in cmd.x_domain.items():
-                        cmd.amplitude -= self.measurement_results[node] * amplitude
-                    self.apply_x_correction(cmd.node, cmd.amplitude)
+                    correction_amplitude = self._correction_amplitude(cmd.amplitude, cmd.x_domain)
+                    self.apply_x_correction(cmd.node, correction_amplitude)
                 case CommandKind.Z:
-                    for node, amplitude in cmd.z_domain.items():
-                        cmd.amplitude -= self.measurement_results[node] * amplitude
-                    self.apply_z_correction(cmd.node, cmd.amplitude)
+                    correction_amplitude = self._correction_amplitude(cmd.amplitude, cmd.z_domain)
+                    self.apply_z_correction(cmd.node, correction_amplitude)
+
+    def _correction_amplitude(self, amplitude: float, domain: Mapping[Node, float]) -> float:
+        for node, weight in domain.items():
+            amplitude += self.measurement_results[node] * weight
+        return amplitude
+
 
     # ------------------------------------------------------------------
     # Abstract interface — one method per command kind
     # ------------------------------------------------------------------
+    @abstractmethod
+    def reset(self) -> None:
+        """Reset the backend to its initial state, clearing any stored quantum
+        state or measurement results.
+        """
+
+    @abstractmethod
+    def insert_input_state(self, state) -> None:
+        """Set the input state of *node* (I command).
+
+        Parameters
+        ----------
+        node : int
+            Mode index.
+        state : any
+            State to insert.  The type and interpretation of this object is
+            backend-dependent.
+         """
 
     @abstractmethod
     def prepare_mode(self, node: int, squeezing_ratio: float, squeezing_angle: float) -> None:

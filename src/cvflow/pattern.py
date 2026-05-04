@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import assert_never
 
 from cvflow.command import Command, CommandKind, N, E, M, X, Z, Node
 from cvflow.graph import OpenGraph
@@ -17,10 +18,10 @@ class Pattern:
         self._commands = commands
         self._input_nodes = set(input_nodes)
 
-        self.check_validity()
+        self.check_runnability()
 
-    def check_validity(self):
-        """Check the validity of the pattern.
+    def check_runnability(self):
+        """Check if the pattern is runnable.
 
         Verifies that the commands can be applied to a graph state without
         contradictions, which are defined as:
@@ -37,6 +38,7 @@ class Pattern:
             application.
         """
         initialised_nodes = self._input_nodes.copy()
+        measured_nodes = set()
 
         for i, cmd in enumerate(self._commands):
             if cmd.kind == CommandKind.N:
@@ -52,13 +54,24 @@ class Pattern:
                 if cmd.node not in initialised_nodes:
                     print(self)
                     raise ValueError(f"Measurement command {cmd} ({i+1}-th command) requires node {cmd.node} to be initialised.")
+
+                if non_measured_nodes := (cmd.x_domain.keys() | cmd.z_domain.keys()) - measured_nodes:
+                    missing_nodes = ",".join(map(str, non_measured_nodes))
+                    raise ValueError(f"Measurement command {cmd} ({i+1}-th command) requires node(s) {missing_nodes} to be measured.")
+
                 initialised_nodes.remove(cmd.node)
+                measured_nodes.add(cmd.node)
             elif cmd.kind in (CommandKind.X, CommandKind.Z):
                 if cmd.node not in initialised_nodes:
                     print(self)
                     raise ValueError(f"Correction command {cmd} ({i+1}-th command) requires node {cmd.node} to be initialised.")
+
+                domain = cmd.x_domain.keys() if cmd.kind == CommandKind.X else cmd.z_domain.keys()
+                if non_measured_nodes := domain - measured_nodes:
+                    missing_nodes = ",".join(map(str, non_measured_nodes))
+                    raise ValueError(f"Correction command {cmd} ({i+1}-th command) requires node(s) {missing_nodes} to be measured.")
             else:
-                raise ValueError(f"Unknown command kind: {cmd.kind}")
+                assert_never(cmd.kind)
 
     def append(self, cmd: Command):
         """Append a command to the pattern (it will be the latest to be executed).
@@ -74,7 +87,7 @@ class Pattern:
             If the resulting pattern is not valid after appending the command.
         """
         self._commands.append(cmd)
-        self.check_validity()
+        self.check_runnability()
 
     def insert(self, index: int, cmd: Command):
         """Insert a command at a specific position in the pattern.
@@ -92,7 +105,7 @@ class Pattern:
             If the resulting pattern is not valid after inserting the command.
         """
         self._commands.insert(index, cmd)
-        self.check_validity()
+        self.check_runnability()
 
     def __str__(self):
         num_commands = len(self._commands)
@@ -145,7 +158,7 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
 
     measured_nodes = set()
     max_layer = max(layer.keys())
-    for layer_idx in range(max_layer, 0, -1):
+    for layer_idx in reversed(range(1, max_layer)):
         # Measure nodes in the current layer
         for node_to_measure in layer[layer_idx]:
             command_list.append(M(node_to_measure))

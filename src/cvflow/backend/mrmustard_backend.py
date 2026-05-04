@@ -13,10 +13,26 @@ class MRMustardBackend(AbstractBackend):
     """
     def __init__(self):
         self._qr: CircuitComponent = Vacuum(0)
-        self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, num=5000)
+        self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, bounds=(-70, 70), num=1000)
         self.is_qr_initialized = False
 
         super().__init__()
+
+    def reset(self) -> None:
+        """Reset the backend to its initial state, clearing any stored quantum
+        state or measurement results.
+        """
+        self._qr = Vacuum(0)
+        self.is_qr_initialized = False
+        self.measurement_results.clear()
+
+    def insert_input_state(self, state) -> None:
+        """Set the input state."""
+        if not self.is_qr_initialized:
+            self._qr = state
+            self.is_qr_initialized = True
+            return
+        self._qr = self._qr >> state # type: ignore
 
     def prepare_mode(self, node: int, squeezing_ratio: float, squeezing_angle: float) -> None:
         """Prepare *node* as a squeezed vacuum state (N command)."""
@@ -38,7 +54,7 @@ class MRMustardBackend(AbstractBackend):
         self._qr = self._qr >> Dgate(mode=node, x=alpha) >> Pgate(mode=node, shearing=beta) # type: ignore
 
 
-        m_outcome_array = self._homodyne_sampler.sample(self._qr, n_samples=1) # type: ignore
+        m_outcome_array = self._homodyne_sampler.sample(self._qr[node], n_samples=1) # type: ignore
         m_outcome = float(m_outcome_array[0, 0])  # Extract scalar from batched result
         self._qr = (self._qr >> QuadratureEigenstate(mode=node, x=m_outcome, phi=np.pi/2).dual).normalize() # type: ignore
         return m_outcome
