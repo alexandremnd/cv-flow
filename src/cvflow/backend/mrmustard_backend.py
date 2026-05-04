@@ -1,9 +1,8 @@
 from cvflow.backend.abstract_backend import AbstractBackend
 
-from mrmustard.lab.states import Coherent, SqueezedVacuum, QuadratureEigenstate, Number, Vacuum, Ket
+from mrmustard.lab.states import SqueezedVacuum, QuadratureEigenstate, Vacuum
 from mrmustard.lab.transformations import CZgate, Dgate, Pgate
 from mrmustard.lab import CircuitComponent, HomodyneSampler
-import mrmustard.math as math
 import numpy as np
 
 INV_SQRT_2 = 1 / 1.414213562
@@ -11,9 +10,18 @@ INV_SQRT_2 = 1 / 1.414213562
 class MRMustardBackend(AbstractBackend):
     """CV-MBQC simulation backend using the MRMustard library (^1.0.0.a1).
     """
-    def __init__(self):
+    def __init__(self, homodyne_bounds=(-70, 70), homodyne_num=1000):
+        """Initialize the MRMustardBackend.
+
+        Parameters
+        ----------
+        homodyne_bounds : tuple, optional
+            Lower and upper bounds used for homodyne sampling, by default (-70, 70)
+        homodyne_num : int, optional
+            Number of sample points used by the homodyne sampler, by default 1000
+        """
         self._qr: CircuitComponent = Vacuum(0)
-        self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, bounds=(-70, 70), num=1000)
+        self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, bounds=homodyne_bounds, num=homodyne_num)
         self.is_qr_initialized = False
 
         super().__init__()
