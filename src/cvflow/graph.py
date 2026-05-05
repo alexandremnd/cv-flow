@@ -25,9 +25,9 @@ class OpenGraph:
         self._output_nodes: set[int]        = set(output_nodes)
         self._adjacency_matrix: np.ndarray  = nx.to_numpy_array(self._graph, weight="weight", nodelist=sorted(graph.nodes))
 
-        self.__validate__()
+        self._validate()
 
-    def __validate__(self):
+    def _validate(self):
         """Validate the graph structure.
 
         Ensures that input and output nodes are present in the graph and that
@@ -224,7 +224,7 @@ class OpenGraph:
 
         return float(self._graph[a][b].get("weight", 1.0))
 
-    def __visualise__(self):
+    def _visualise(self):
         """Render the graph with Matplotlib.
 
         Nodes are coloured by role (input, output, interior, or both).
@@ -270,11 +270,11 @@ class OpenGraph:
         filename : str
             Path of the output SVG file.
         """
-        self.__visualise__()
+        self._visualise()
         plt.savefig(filename, format="svg")
         plt.close()
 
     def visualise(self):
         """Display the graph visualisation in a Matplotlib window."""
-        self.__visualise__()
+        self._visualise()
         plt.show()
