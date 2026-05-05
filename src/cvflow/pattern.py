@@ -17,12 +17,39 @@ class Pattern:
         The list of commands in the pattern.
     _input_nodes : set[Node]
         The set of input nodes that are considered initialised at the start of the pattern.
+
     """
-    def __init__(self, commands: list[Command], input_nodes: list[Node]):
+    def __init__(self, commands: list[Command], input_nodes: list[Node], nodes: list[Node] | None = None):
         self._commands = commands
         self._input_nodes = set(input_nodes)
 
+        if nodes is not None:
+            self._nodes = set(nodes)
+        else:
+            self._nodes = set(input_nodes) | {cmd.node for cmd in commands if cmd.kind == CommandKind.N}
+
         self.check_runnability()
+
+    @staticmethod
+    def from_flow(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]]) -> "Pattern":
+        """Construct a Pattern from an OpenGraph with a flow.
+
+        This is a convenience wrapper around :func:`flow_to_pattern` that directly constructs the pattern from the graph and its flow.
+
+        Parameters
+        ----------
+        graph : OpenGraph
+            The input graph containing the nodes and edges to be converted.
+        g : dict[int, dict[int, float]]
+            The flow correction mapping. For each measured node, maps to a
+            dictionary of target nodes and their correction amplitudes.
+            Structure: {measured_node: {target_node: amplitude}}.
+        layer : dict[int, list[int]]
+            The layering of nodes for measurement order. Maps layer numbers
+            to lists of nodes that should be measured in that layer.
+            Structure: {layer_num: [node1, node2, ...]}.
+        """
+        return flow_to_pattern(graph, g, layer)
 
     def check_runnability(self):
         """Check if the pattern is runnable.
@@ -233,4 +260,4 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
             command_list.append(Z(z_node, 0, z_domain=z_corr))
 
 
-    return Pattern(command_list, input_nodes=graph.input_nodes)
+    return Pattern(command_list, input_nodes=graph.input_nodes, nodes=graph.nodes)
