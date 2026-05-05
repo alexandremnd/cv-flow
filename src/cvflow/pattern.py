@@ -1,5 +1,7 @@
+import copy
 from collections import defaultdict
-from typing import assert_never
+from collections.abc import Mapping
+from typing import Iterator, assert_never
 
 from cvflow.command import Command, CommandKind, N, E, M, X, Z, Node
 from cvflow.graph import OpenGraph
@@ -13,6 +15,8 @@ class Pattern:
     ----------
     _commands : list[Command]
         The list of commands in the pattern.
+    _input_nodes : set[Node]
+        The set of input nodes that are considered initialised at the start of the pattern.
     """
     def __init__(self, commands: list[Command], input_nodes: list[Node]):
         self._commands = commands
@@ -23,19 +27,38 @@ class Pattern:
     def check_runnability(self):
         """Check if the pattern is runnable.
 
-        Verifies that the commands can be applied to a graph state without
-        contradictions, which are defined as:
+        A node is initialised if it appears in ``input_nodes`` or has been
+        prepared by a preceding ``N`` command. A node is measured once its
+        ``M`` command has been executed and it has left the initialised set.
 
-        - a preparation command (N) is not applied to a node that has
-          already been measured.
-        - a non preparation command (E, M, X, Z) is not applied to a node
-          that has not been prepared.
+        The following rules are enforced, in command order:
+
+        **N (prepare)**
+            The target node must not already be initialised. This catches both
+            double-preparation and trying to prepare a node that was declared
+            as an input.
+
+        **E (entangle)**
+            Both endpoint nodes must be initialised. Applying an entangling gate
+            to an unprepared or already-measured node is invalid.
+
+        **M (measure)**
+            - The target node must be initialised (not yet measured, not absent).
+            - Every node referenced in ``x_domain`` or ``z_domain`` must already
+              be measured. This covers two sub-cases: a node whose ``M`` command
+              has not yet appeared in the sequence (ordering violation), and a
+              node that is never prepared or measured at all (missing node).
+
+        **X / Z (correct)**
+            - The target node must be initialised.
+            - Every node in the correction domain (``x_domain`` for ``X`` commands,
+              ``z_domain`` for ``Z`` commands) must already be measured, with the same
+              two sub-cases as for M domain violations above.
 
         Raises
         ------
         ValueError
-            If the pattern is not valid according to the rules of command
-            application.
+            If any of the rules above is violated.
         """
         initialised_nodes = self._input_nodes.copy()
         measured_nodes = set()
@@ -43,16 +66,13 @@ class Pattern:
         for i, cmd in enumerate(self._commands):
             if cmd.kind == CommandKind.N:
                 if cmd.node in initialised_nodes:
-                    print(self)
                     raise ValueError(f"Node {cmd.node} is already initialised.")
                 initialised_nodes.add(cmd.node)
             elif cmd.kind == CommandKind.E:
                 if cmd.nodes[0] not in initialised_nodes or cmd.nodes[1] not in initialised_nodes:
-                    print(self)
                     raise ValueError(f"Entanglement command {cmd} ({i+1}-th command) requires both nodes to be initialised.")
             elif cmd.kind == CommandKind.M:
                 if cmd.node not in initialised_nodes:
-                    print(self)
                     raise ValueError(f"Measurement command {cmd} ({i+1}-th command) requires node {cmd.node} to be initialised.")
 
                 if non_measured_nodes := (cmd.x_domain.keys() | cmd.z_domain.keys()) - measured_nodes:
@@ -63,7 +83,6 @@ class Pattern:
                 measured_nodes.add(cmd.node)
             elif cmd.kind in (CommandKind.X, CommandKind.Z):
                 if cmd.node not in initialised_nodes:
-                    print(self)
                     raise ValueError(f"Correction command {cmd} ({i+1}-th command) requires node {cmd.node} to be initialised.")
 
                 domain = cmd.x_domain.keys() if cmd.kind == CommandKind.X else cmd.z_domain.keys()
@@ -73,39 +92,73 @@ class Pattern:
             else:
                 assert_never(cmd.kind)
 
-    def append(self, cmd: Command):
-        """Append a command to the pattern (it will be the latest to be executed).
+    def __getitem__(self, key) -> Command:
+        return self._commands[key]
+
+    def __iter__(self) -> Iterator[Command]:
+        return iter(self._commands)
+
+    def __len__(self) -> int:
+        return len(self._commands)
+
+    def clone(self) -> "Pattern":
+        """Return a deep copy of the pattern."""
+        return Pattern(copy.deepcopy(self._commands), list(self._input_nodes))
+
+    def set_measurements(self, overrides: Mapping[Node, tuple[float, float, float]]):
+        """Override $(\\alpha, \\beta, \\gamma)$ of the listed ``M`` commands in place and return self.
 
         Parameters
         ----------
-        cmd : Command
-            The command to be appended to the pattern.
+        overrides : Mapping[Node, tuple[float, float, float]]
+            A mapping of node numbers to tuples of $(\\alpha, \\beta, \\gamma)$.
 
         Raises
         ------
         ValueError
-            If the resulting pattern is not valid after appending the command.
+            If any node listed in ``overrides`` has no ``M`` command.
         """
-        self._commands.append(cmd)
-        self.check_runnability()
+        seen: set[Node] = set()
+        for cmd in self._commands:
+            if cmd.kind == CommandKind.M and cmd.node in overrides:
+                cmd.alpha, cmd.beta, cmd.gamma = overrides[cmd.node]
+                seen.add(cmd.node)
 
-    def insert(self, index: int, cmd: Command):
-        """Insert a command at a specific position in the pattern.
+        if missing := overrides.keys() - seen:
+            raise ValueError(f"No measurement command found for node(s): {sorted(missing)}.")
+
+    def set_squeezing(self, overrides: Mapping[Node, tuple[float, float]]) -> None:
+        """Override $(r, \\theta)$ of the listed ``N`` commands in place.
 
         Parameters
         ----------
-        index : int
-            The position at which to insert the command (0-based index).
-        cmd : Command
-            The command to be inserted.
+        overrides : Mapping[Node, tuple[float, float]]
+            A mapping of node numbers to tuples of $(r, \\theta)$.
 
         Raises
         ------
         ValueError
-            If the resulting pattern is not valid after inserting the command.
+            If any node listed in overrides has no ``N`` command.
         """
-        self._commands.insert(index, cmd)
-        self.check_runnability()
+        seen: set[Node] = set()
+        for cmd in self._commands:
+            if cmd.kind == CommandKind.N and cmd.node in overrides:
+                cmd.squeezing_ratio, cmd.squeezing_angle = overrides[cmd.node]
+                seen.add(cmd.node)
+
+        if missing := overrides.keys() - seen:
+            raise ValueError(f"No preparation command found for node(s): {sorted(missing)}.")
+
+    def reset(self):
+        """Reset the pattern to a default state by clearing all measurements and corrections.
+        The default state is not necessarily the original state.
+        """
+        for cmd in self._commands:
+            if cmd.kind == CommandKind.M:
+                cmd.alpha = cmd.beta = cmd.gamma = 0.0
+            elif cmd.kind == CommandKind.N:
+                cmd.squeezing_ratio = 2.0
+                cmd.squeezing_angle = np.pi / 2
 
     def __str__(self):
         num_commands = len(self._commands)
@@ -113,13 +166,13 @@ class Pattern:
         return "\n".join(f"{i+1:0{width}d}) {cmd}" for i, cmd in enumerate(self._commands))
 
 
-def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]], squeezing_params: dict[int, tuple[float, float]] = {}) -> Pattern:
+def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]]) -> Pattern:
     """Convert an OpenGraph with a flow to a Pattern.
 
     This function takes a flow and converts it into a Pattern by generating
     the appropriate sequence of commands based on the flow structure. The
-    conversion follows this order: node preparation (N), entanglement (E),
-    measurements (M) by layer, and corrections (X, Z) for each layer.
+    conversion follows this order: node preparation (``N``), entanglement (``E``),
+    measurements (``M``) by layer, and corrections (``X``, ``Z``) for each layer.
 
     Parameters
     ----------
@@ -133,10 +186,6 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
         The layering of nodes for measurement order. Maps layer numbers
         to lists of nodes that should be measured in that layer.
         Structure: {layer_num: [node1, node2, ...]}.
-    squeezing_params : dict[int, tuple[float, float]], optional
-        Optional squeezing parameters for each node. Maps node numbers to
-        tuples of (squeezing_ratio, squeezing_angle). If not provided, defaults
-        to a squeezing ratio of 2.0 and angle of π/2 for all nodes
 
     Returns
     ------
@@ -149,8 +198,7 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
 
     # Prepare all nodes
     for node_to_measure in graph.non_input_nodes:
-        squeezing_ratio, squeezing_angle = squeezing_params.get(node_to_measure, (2.0, np.pi/2))
-        command_list.append(N(node_to_measure, squeezing_ratio=squeezing_ratio, squeezing_angle=squeezing_angle))  # type: ignore
+        command_list.append(N(node_to_measure))  # type: ignore
 
     # Entangle according to the graph edges
     for node1, node2, weight in graph.edges:
