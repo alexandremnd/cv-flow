@@ -19,16 +19,28 @@ class Pattern:
         The set of input nodes that are considered initialised at the start of the pattern.
 
     """
-    def __init__(self, commands: list[Command], input_nodes: list[Node], nodes: list[Node] | None = None):
+    def __init__(self, commands: list[Command], input_nodes: list[Node]):
         self._commands = commands
         self._input_nodes = set(input_nodes)
-
-        if nodes is not None:
-            self._nodes = set(nodes)
-        else:
-            self._nodes = set(input_nodes) | {cmd.node for cmd in commands if cmd.kind == CommandKind.N}
+        self._nodes = set(input_nodes) | {cmd.node for cmd in commands if cmd.kind == CommandKind.N}
+        self._non_input_nodes = self._nodes - self._input_nodes
 
         self.check_runnability()
+
+    @property
+    def input_nodes(self) -> list[Node]:
+        """The set of input nodes that are considered initialised at the start of the pattern."""
+        return list(self._input_nodes)
+
+    @property
+    def nodes(self) -> list[Node]:
+        """The set of all nodes that appear in the pattern."""
+        return list(self._nodes)
+
+    @property
+    def non_input_nodes(self) -> list[Node]:
+        """The set of non-input nodes that need to be prepared by the pattern."""
+        return list(self._non_input_nodes)
 
     @staticmethod
     def from_flow(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dict[int, list[int]]) -> "Pattern":
@@ -260,4 +272,4 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
             command_list.append(Z(z_node, 0, z_domain=z_corr))
 
 
-    return Pattern(command_list, input_nodes=graph.input_nodes, nodes=graph.nodes)
+    return Pattern(command_list, input_nodes=graph.input_nodes)
