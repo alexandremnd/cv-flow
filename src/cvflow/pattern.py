@@ -306,7 +306,7 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
         command_list.append(E((node1, node2), weight))
 
     measured_nodes = set()
-    max_layer = max(layer.keys())
+    max_layer = max(layer.keys()) + 1
     for layer_idx in reversed(range(1, max_layer)):
         # Measure nodes in the current layer
         for node_to_measure in layer[layer_idx]:
