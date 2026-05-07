@@ -49,7 +49,7 @@ class AbstractBackend(ABC):
 
     def _correction_amplitude(self, amplitude: float, domain: Mapping[Node, float]) -> float:
         for node, weight in domain.items():
-            amplitude += self._measurement_results[node] * weight
+            amplitude -= self._measurement_results[node] * weight
         return amplitude
 
     def _compute_expected_state(self, pattern: Pattern, input_state):
@@ -71,7 +71,7 @@ class AbstractBackend(ABC):
         for cmd in pattern:
             match cmd.kind:
                 case CommandKind.N:
-                    self._prepare_mode(cmd.node, 10, np.pi)
+                    self._prepare_mode(cmd.node, 4, np.pi/2)
                 case CommandKind.E:
                     self._entangle_modes(cmd.nodes, cmd.weight)
                 case CommandKind.M:
@@ -80,6 +80,7 @@ class AbstractBackend(ABC):
                     pass
                 case CommandKind.Z:
                     pass
+
 
         self._store_expected_state()
         self._reset()

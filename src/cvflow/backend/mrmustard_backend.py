@@ -79,3 +79,6 @@ class MRMustardBackend(AbstractBackend):
 
     def _store_expected_state(self) -> None:
         self._expected_state = self._qr
+
+    def get_expected_state(self):
+        return self._expected_state
