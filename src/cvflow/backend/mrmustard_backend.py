@@ -1,4 +1,5 @@
 from cvflow.backend.abstract_backend import AbstractBackend
+from cvflow.command import Node
 
 from mrmustard.lab.states import SqueezedVacuum, QuadratureEigenstate, Vacuum
 from mrmustard.lab.transformations import CZgate, Dgate, Pgate
@@ -10,68 +11,71 @@ INV_SQRT_2 = 1 / 1.414213562
 class MRMustardBackend(AbstractBackend):
     """CV-MBQC simulation backend using the MRMustard library (^1.0.0.a1).
     """
-    def __init__(self, homodyne_bounds=(-70, 70), homodyne_num=1000):
+    def __init__(self, homodyne_bounds: tuple[float, float] = (-70, 70), homodyne_num: int =1000):
         """Initialize the MRMustardBackend.
 
         Parameters
         ----------
-        homodyne_bounds : tuple, optional
+        homodyne_bounds : tuple[float, float], optional
             Lower and upper bounds used for homodyne sampling, by default (-70, 70)
         homodyne_num : int, optional
             Number of sample points used by the homodyne sampler, by default 1000
         """
         self._qr: CircuitComponent = Vacuum(0)
+        self._expected_state = None
         self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, bounds=homodyne_bounds, num=homodyne_num)
-        self.is_qr_initialized = False
+        self._is_qr_initialized = False
 
         super().__init__()
 
-    def reset(self) -> None:
-        """Reset the backend to its initial state, clearing any stored quantum
-        state or measurement results.
-        """
+    def _reset(self) -> None:
         self._qr = Vacuum(0)
-        self.is_qr_initialized = False
-        self.measurement_results.clear()
+        self._is_qr_initialized = False
+        self._measurement_results.clear()
 
-    def insert_input_state(self, state) -> None:
-        """Set the input state."""
-        if not self.is_qr_initialized:
+    def _insert_input_state(self, state) -> None:
+        if not self._is_qr_initialized:
             self._qr = state
-            self.is_qr_initialized = True
+            self._is_qr_initialized = True
             return
         self._qr = self._qr >> state # type: ignore
 
-    def prepare_mode(self, node: int, squeezing_ratio: float, squeezing_angle: float) -> None:
-        """Prepare *node* as a squeezed vacuum state (N command)."""
-        if not self.is_qr_initialized:
+    def _prepare_mode(self, node: int, squeezing_ratio: float, squeezing_angle: float) -> None:
+        if not self._is_qr_initialized:
             self._qr = SqueezedVacuum(mode=node, r=squeezing_ratio, phi=2*squeezing_angle)
-            self.is_qr_initialized = True
+            self._is_qr_initialized = True
             return
         self._qr = self._qr >> SqueezedVacuum(mode=node, r=squeezing_ratio, phi=2*squeezing_angle) # type: ignore
 
-    def entangle_modes(self, nodes: tuple[int, int], weight: float) -> None:
-        """Apply a weighted CZ gate between *nodes* (E command)."""
+    def _entangle_modes(self, nodes: tuple[int, int], weight: float) -> None:
         self._qr = self._qr >> CZgate(modes=nodes, s=weight) # type: ignore
 
-    def measure_mode(self, node: int, alpha: float, beta: float, gamma: float) -> float:
-        """Measure *node* in the adaptive basis (M command)."""
+    def _measure_mode(self, node: int, alpha: float, beta: float, gamma: float) -> float:
         if gamma != 0:
             raise NotImplementedError("MRMustardBackend does not support non-zero gamma for measurement commands.")
 
-        self._qr = self._qr >> Dgate(mode=node, x=alpha) >> Pgate(mode=node, shearing=beta) # type: ignore
-
+        self._qr = self._qr >> Dgate(mode=node, x=-alpha * INV_SQRT_2) >> Pgate(mode=node, shearing=4*beta) # type: ignore
 
         m_outcome_array = self._homodyne_sampler.sample(self._qr[node], n_samples=1) # type: ignore
         m_outcome = float(m_outcome_array[0, 0])  # Extract scalar from batched result
         self._qr = (self._qr >> QuadratureEigenstate(mode=node, x=m_outcome, phi=np.pi/2).dual).normalize() # type: ignore
         return m_outcome
 
+    def _measure_mode_with_outcome(self, node: Node, alpha: float, beta: float, gamma: float, outcome: float) -> None:
+        if gamma != 0:
+            raise NotImplementedError("MRMustardBackend does not support non-zero gamma for measurement commands.")
 
-    def apply_x_correction(self, node: int, amplitude: float) -> None:
-        """Apply an X correction to *node* with the given amplitude (X command)."""
+        self._qr = self._qr >> Dgate(mode=node, x=-alpha * INV_SQRT_2) >> Pgate(mode=node, shearing=4*beta) # type: ignore
+        self._qr = (self._qr >> QuadratureEigenstate(mode=node, x=outcome, phi=np.pi/2).dual).normalize() # type: ignore
+
+    def _apply_x_correction(self, node: int, amplitude: float) -> None:
         self._qr = self._qr >> Dgate(mode=node, x=amplitude*INV_SQRT_2) # type: ignore
 
-    def apply_z_correction(self, node: int, amplitude: float) -> None:
-        """Apply a Z correction to *node* with the given amplitude (Z command)."""
+    def _apply_z_correction(self, node: int, amplitude: float) -> None:
         self._qr = self._qr >> Dgate(mode=node, y=amplitude*INV_SQRT_2) # type: ignore
+
+    def compute_fidelity(self) -> float:
+        return self._qr.fidelity(self._expected_state) # type: ignore
+
+    def _store_expected_state(self) -> None:
+        self._expected_state = self._qr
