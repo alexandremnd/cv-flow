@@ -75,7 +75,7 @@ class MRMustardBackend(AbstractBackend):
         self._qr = self._qr >> Dgate(mode=node, y=amplitude*INV_SQRT_2) # type: ignore
 
     def compute_fidelity(self) -> float:
-        return self._qr.fidelity(self._expected_state) # type: ignore
+        return np.real(self._qr.fidelity(self._expected_state)) # type: ignore
 
     def _store_expected_state(self) -> None:
         self._expected_state = self._qr
