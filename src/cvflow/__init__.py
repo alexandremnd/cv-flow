@@ -8,6 +8,12 @@ quantum computations with publication-quality visualization.
 from cvflow.graph import OpenGraph
 from cvflow.flow import find_cvflow, check_flow
 from cvflow.pattern import Pattern, flow_to_pattern
+from cvflow.factories import (
+    MeasurementSampler,
+    random_measurements,
+    squeezing_factory,
+    uniform_sampler,
+)
 from cvflow.command import N, M, E, X, Z
 
 __version__ = "0.1.0"
@@ -21,6 +27,11 @@ __all__ = [
     # Pattern generation
     "Pattern",
     "flow_to_pattern",
+    # Pattern factories
+    "MeasurementSampler",
+    "random_measurements",
+    "squeezing_factory",
+    "uniform_alpha_sampler",
     # Commands
     "N",
     "M",

@@ -71,7 +71,7 @@ class AbstractBackend(ABC):
         for cmd in pattern:
             match cmd.kind:
                 case CommandKind.N:
-                    self._prepare_mode(cmd.node, 4, np.pi/2)
+                    self._prepare_mode(cmd.node, 3, np.pi/2)
                 case CommandKind.E:
                     self._entangle_modes(cmd.nodes, cmd.weight)
                 case CommandKind.M:
