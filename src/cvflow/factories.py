@@ -8,8 +8,7 @@ common building blocks:
 - :func:`random_measurements` decorates an existing pattern by drawing fresh
   measurement parameters from a sampler.
 """
-from collections.abc import Callable
-from typing import TypeAlias
+from abc import ABC, abstractmethod
 
 import numpy as np
 
@@ -17,10 +16,16 @@ from cvflow.command import CommandKind, Node
 from cvflow.pattern import Pattern
 
 
-MeasurementSampler: TypeAlias = Callable[
-    [np.random.Generator, Node], tuple[float, float, float]
-]
-"""Draw $(\\alpha, \\beta, \\gamma)$ for a measurement on ``node`` using ``rng``."""
+class MeasurementSampler(ABC):
+    """Base class for measurement samplers.
+
+    Subclasses must implement :meth:`__call__` to draw
+    $(\\alpha, \\beta, \\gamma)$ for a given node.
+    """
+
+    @abstractmethod
+    def __call__(self, rng: np.random.Generator, node: Node) -> tuple[float, float, float]:
+        """Draw $(\\alpha, \\beta, \\gamma)$ for a measurement on ``node``."""
 
 
 def squeezing_factory(
@@ -60,27 +65,36 @@ def random_measurements(
     }
     pattern.set_measurements(overrides)
 
-def uniform_sampler(
-    alpha_bounds: tuple[float, float], beta_bounds: tuple[float, float]
-) -> MeasurementSampler:
-    """Sampler that draws $\\alpha, \\beta, \\gamma$ uniformly in ``[low, high]``
+
+class UniformSampler(MeasurementSampler):
+    """Sampler that draws $\\alpha, \\beta, \\gamma$ uniformly from bounded ranges.
 
     Parameters
     ----------
     alpha_bounds : tuple[float, float]
-        Bounds for the uniform distribution of the $\\alpha$ measurement parameter.
+        ``(low, high)`` for the $\\alpha$ measurement parameter.
     beta_bounds : tuple[float, float]
-        Bounds for the uniform distribution of the $\\beta$ measurement parameter.
-    gamma_bounds : tuple[float, float]
-        Bounds for the uniform distribution of the $\\gamma$ measurement parameter.
-
-    Returns
-    -------
-    MeasurementSampler
-            A sampler that can be passed to :func:`random_measurements` to draw
-            measurement parameters uniformly from the specified bounds.
+        ``(low, high)`` for the $\\beta$ measurement parameter.
     """
-    def _sample(rng: np.random.Generator, _node: Node) -> tuple[float, float, float]:
-        sample = rng.uniform(alpha_bounds[0], alpha_bounds[1]), rng.uniform(beta_bounds[0], beta_bounds[1]), 0.0
-        return sample
-    return _sample
+
+    def __init__(
+        self,
+        alpha_bounds: tuple[float, float],
+        beta_bounds: tuple[float, float],
+    ) -> None:
+        self.alpha_bounds = alpha_bounds
+        self.beta_bounds = beta_bounds
+
+    def __call__(self, rng: np.random.Generator, node: Node) -> tuple[float, float, float]:
+        return (
+            rng.uniform(*self.alpha_bounds),
+            rng.uniform(*self.beta_bounds),
+            0.0,
+        )
+
+
+def uniform_sampler(
+    alpha_bounds: tuple[float, float], beta_bounds: tuple[float, float]
+) -> UniformSampler:
+    """Return a :class:`UniformSampler` with the given bounds."""
+    return UniformSampler(alpha_bounds, beta_bounds)
