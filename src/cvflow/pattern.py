@@ -261,6 +261,55 @@ class Pattern:
                 cmd.squeezing_ratio = 2.0
                 cmd.squeezing_angle = np.pi / 2
 
+    def to_dict(self) -> dict:
+        """Serialise this :class:`Pattern` to a JSON-friendly dict.
+
+        Output shape: ``{"input_nodes": [...], "commands": [{"kind": ..., ...}, ...]}``.
+        Each command is rendered with its kind tag and the fields relevant to
+        that kind (e.g. ``squeezing_ratio`` for ``N``, ``alpha``/``beta``/
+        ``gamma`` for ``M``, correction domains for ``M``/``X``/``Z``).
+        """
+        commands: list[dict] = []
+        for cmd in self._commands:
+            if cmd.kind == CommandKind.N:
+                commands.append({
+                    "kind": "N",
+                    "node": cmd.node,
+                    "squeezing_ratio": cmd.squeezing_ratio,
+                    "squeezing_angle": cmd.squeezing_angle,
+                })
+            elif cmd.kind == CommandKind.E:
+                commands.append({
+                    "kind": "E",
+                    "nodes": list(cmd.nodes),
+                    "weight": cmd.weight,
+                })
+            elif cmd.kind == CommandKind.M:
+                commands.append({
+                    "kind": "M",
+                    "node": cmd.node,
+                    "alpha": cmd.alpha,
+                    "beta": cmd.beta,
+                    "gamma": cmd.gamma,
+                    "x_domain": {str(k): v for k, v in cmd.x_domain.items()},
+                    "z_domain": {str(k): v for k, v in cmd.z_domain.items()},
+                })
+            elif cmd.kind == CommandKind.X:
+                commands.append({
+                    "kind": "X",
+                    "node": cmd.node,
+                    "amplitude": cmd.amplitude,
+                    "x_domain": {str(k): v for k, v in cmd.x_domain.items()},
+                })
+            elif cmd.kind == CommandKind.Z:
+                commands.append({
+                    "kind": "Z",
+                    "node": cmd.node,
+                    "amplitude": cmd.amplitude,
+                    "z_domain": {str(k): v for k, v in cmd.z_domain.items()},
+                })
+        return {"input_nodes": sorted(self._input_nodes), "commands": commands}
+
     def __str__(self):
         num_commands = len(self._commands)
         width = len(str(num_commands))
@@ -295,6 +344,9 @@ def flow_to_pattern(graph: OpenGraph, g: dict[int, dict[int, float]], layer: dic
         containing the complete sequence of commands (N, E, M, X, Z)
         that implement the measurement-based quantum computation.
     """
+    if g == {} or layer == {}:
+        raise ValueError("Flow mapping g and layer mapping cannot be empty. (Graph has no flow.)")
+
     command_list: list[Command] = []
 
     # Prepare all nodes

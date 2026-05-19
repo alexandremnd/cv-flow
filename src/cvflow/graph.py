@@ -196,6 +196,24 @@ class OpenGraph:
         """
         return list(self._nodes - set(nodes)) # copy of the nodes list to avoid external modifications
 
+    def to_dict(self) -> dict:
+        """Serialise this :class:`OpenGraph` to a JSON-friendly dict."""
+        return {
+            "nodes": sorted(self._nodes),
+            "edges": [[int(u), int(v), float(w)] for u, v, w in self.edges],
+            "input_nodes": sorted(self._input_nodes),
+            "output_nodes": sorted(self._output_nodes),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "OpenGraph":
+        """Reconstruct an :class:`OpenGraph` from :meth:`to_dict` output."""
+        g = nx.Graph()
+        g.add_nodes_from(d["nodes"])
+        for u, v, w in d["edges"]:
+            g.add_edge(u, v, weight=w)
+        return cls(g, input_nodes=d["input_nodes"], output_nodes=d["output_nodes"])
+
     def __getitem__(self, key: tuple[int, int]) -> float:
         """Access an edge weight using ``graph[a, b]``.
 
