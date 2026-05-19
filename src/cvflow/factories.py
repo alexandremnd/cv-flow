@@ -2,8 +2,6 @@
 
 - :func:`uniform_squeezings` / :func:`uniform_squeezing_angles` produce the
   per-node dicts consumed by :class:`~cvflow.utils.run.RunConfig`.
-- :func:`squeezing_factory` mutates an existing pattern in place (kept for
-  one-off pattern tweaks; the sweep pipeline uses the dict factories instead).
 - :func:`random_measurements` decorates an existing pattern by drawing fresh
   measurement parameters from a sampler.
 """

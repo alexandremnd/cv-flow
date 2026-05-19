@@ -85,6 +85,16 @@ class AbstractBackend(ABC):
         self._store_expected_state()
         self._reset()
 
+    def get_measurement_outcomes(self) -> dict[int, float]:
+        """Get the measurement outcomes from the last run pattern.
+
+        Returns
+        -------
+        dict[int, float]
+            A dictionary mapping mode indices to their measurement outcomes.
+        """
+        return self._measurement_results
+
     # ------------------------------------------------------------------
     # Abstract interface — one method per command kind
     # ------------------------------------------------------------------
@@ -106,6 +116,27 @@ class AbstractBackend(ABC):
         output state in the infinite squeezing case.
         The type and interpretation of the input states is backend-dependent.
         """
+
+    def compute_fidelity_with_state(self, target_state) -> float:
+        """Compute the fidelity between the current output state and a user-provided target state.
+
+        Parameters
+        ----------
+        target_state : any
+            The target state to compare against. The type and interpretation of this
+            object is backend-dependent.
+
+        Returns
+        -------
+        float
+            The fidelity between the current output state and *target_state*.
+
+        Raises
+        ------
+        NotImplementedError
+            If the backend does not support this method.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not implement compute_fidelity_with_state.")
 
     @abstractmethod
     def _reset(self) -> None:

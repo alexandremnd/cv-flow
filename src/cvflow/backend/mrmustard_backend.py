@@ -23,6 +23,8 @@ class MRMustardBackend(AbstractBackend):
         """
         self._qr: CircuitComponent = Vacuum(0)
         self._expected_state = None
+        self._homodyne_bounds: tuple[float, float] = homodyne_bounds
+        self._homodyne_num: int = int(homodyne_num)
         self._homodyne_sampler: HomodyneSampler = HomodyneSampler(phi=np.pi/2, bounds=homodyne_bounds, num=homodyne_num)
         self._is_qr_initialized = False
 
@@ -76,6 +78,9 @@ class MRMustardBackend(AbstractBackend):
 
     def compute_fidelity(self) -> float:
         return np.real(self._qr.fidelity(self._expected_state)) # type: ignore
+
+    def compute_fidelity_with_state(self, target_state) -> float:
+        return np.real(self._qr.fidelity(target_state)) # type: ignore
 
     def _store_expected_state(self) -> None:
         self._expected_state = self._qr
